@@ -1,0 +1,17 @@
+function I_out = imgnormalize(I)
+%imgnormalize Takes an input image and normalize all its pixels within 0 to
+%255 values (only double and uint8 values).
+
+    if isa(I,'double')
+        I = I - min(I(:));
+        I = I/max(I(:));
+        
+    elseif isa(I,'uint8')
+        I = I - min(I(:));
+        I = uint8(double(I)*double(255)/double(max(I(:))));
+    else
+        error('Class not yet supported.');
+    end
+    I_out = I;
+end
+
