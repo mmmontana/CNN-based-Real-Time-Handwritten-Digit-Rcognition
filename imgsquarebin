@@ -1,0 +1,16 @@
+function I_out = imgsquarebin(I_bin)
+%imgsquarebin Takes a binary image and transforms it into a square image
+
+    [rows, cols] = size(I_bin);
+    fg_pix = mode(I_bin(:)); % assumed foreground most repeated pixel
+    if rows > cols      
+        rc_diff = rows - cols;
+        cols_add = repmat(fg_pix,[rows round(rc_diff/2)]);
+        I_out = [cols_add I_bin cols_add];
+    else
+        cr_diff = cols - rows;
+        rows_add = repmat(fg_pix,[round(cr_diff/2) cols]);
+        I_out = [rows_add; I_bin; rows_add];
+    end
+end
+
