@@ -9,7 +9,7 @@ The final net achieved a 98.54% train accuracy and 98.40% test accuracy. For rea
 was carried out, and for digit preprocessing, resize and Gauss filter were used to adequate each detected digit to 
 CNN input. The final model was tested in a 1280x720 Webcam with sample time of 1 sec.
 
-** FUNCTIONS:
+FUNCTIONS:
 -- loadMNISTLabels: load MNIST labels, one label per image
 -- loadMNISTImages: load MNIST 28x28 images
 -- imgsquarebin:    reshape binary image into squared
