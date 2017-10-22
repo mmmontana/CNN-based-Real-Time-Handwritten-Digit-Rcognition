@@ -1,0 +1,63 @@
+function [I_array_out, boundingBox_out, no_numbers] = imgblobdetect(blob, I, Nblobmax, size_out)
+%IMGDETNUM Extract blob objects from image I as 4-D matrix of images and assigns a bounding box.
+%Output images are ready to be tested on CNN. Only uint8 input images.
+
+    % Only for uin8 images
+    if not(isa(I,'uint8'))
+        error('Only uint8');
+    end
+    
+    % Initialize
+    boundingBox_out = [];
+    bbox_margin = 20; 
+    [sizeX,sizeY] = size(I); 
+    
+    % Normalize and binarize
+    I = imgnormalize(I);
+    I_bin = imbinarize(I,'adaptive','Sensitivity',0.7);
+
+    % Get blob coordinates
+    boundingBox = step(blob, not(I_bin));
+    
+    j = 1;
+    for i = 1:size(boundingBox,1)
+        %if i == 10, keyboard; end
+        
+        v = boundingBox(i,:);
+        v(1) = v(1) - bbox_margin;   % Vertex X
+        v(2) = v(2) - bbox_margin;   % Vertex Y
+        v(3) = v(3) + 2*bbox_margin; % Width
+        v(4) = v(4) + 2*bbox_margin; % Height 
+        
+        % If expanded bounding box is inside image limits then...
+        if  (sum(v(1:2) > 0) >= 2) &&...
+            (v(1) + v(3) <= sizeY) &&...
+            (v(2) + v(4) <= sizeX) &&...
+            (j <= Nblobmax)
+            
+            % Get bounding box section of I
+            I_crop = I_bin(v(2):v(2)+v(4)-1,v(1):v(1)+v(3)-1);
+        
+            % Process cropped image and store on 4-D array
+            I_crop = imgsquarebin(I_crop);
+            I_crop = imresize(I_crop, [size_out(1) size_out(2)]);
+            
+            I_array_out(:,:,:,j) = 255*uint8(I_crop);
+            I_array_out(:,:,:,j) = uint8(imgaussfilt(I_array_out(:,:,:,j),0.9,'FilterSize', [5 5]));
+            I_array_out(:,:,:,j) = 255 - imgnormalize(I_array_out(:,:,:,j)); 
+        
+            % Expanded bounding box
+            boundingBox_out(j,:) = v;  
+            j = j + 1;
+        end
+    end 
+    if size(boundingBox_out,1) == 0
+        % If no blobs detected, return zeros and no_numbers = true
+        no_numbers = true;
+        boundingBox_out = 0;
+        I_array_out = 0;
+    else
+        no_numbers = false;
+    end   
+end
+
