@@ -10,14 +10,23 @@ was carried out, and for digit preprocessing, resize and Gauss filter were used 
 CNN input. The final model was tested in a 1280x720 Webcam with sample time of 1 sec.
 
 FUNCTIONS:
+
 -- loadMNISTLabels: load MNIST labels, one label per image
+
 -- loadMNISTImages: load MNIST 28x28 images
+
 -- imgsquarebin:    reshape binary image into squared
+
 -- imgnormalize:    normalize image values within 0 to 255
+
 -- imgblobdetect:   Extract blob objects from image I as 4-D matrix of images and assigns a bounding box. Output images are                       ready to be tested on CNN. Only uint8 input images.
 
+
 ** MAIN FILES:
+
 -- main_cnn_custom_train
+
 -- main_webcam_video
+
 
 
