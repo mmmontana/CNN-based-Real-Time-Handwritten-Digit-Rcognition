@@ -1,0 +1,159 @@
+close all
+clear
+clc
+
+%% Set path
+cdir = fileparts(mfilename('fullpath'));
+addpath(fullfile(cdir,'/MNIST'));
+
+%% Load MNIST Dataset 
+% Data labels
+trainDigitLabels = categorical(loadMNISTLabels('train-labels-idx1-ubyte'));
+testDigitLabels =  categorical(loadMNISTLabels('t10k-labels-idx1-ubyte'));
+
+% Train-test sizes
+Ntr = length(trainDigitLabels);
+Ntest = length(testDigitLabels);
+
+% Data matrices (reshaped to 4 Dimensions)
+trainDigitData = reshape(loadMNISTImages('train-images-idx3-ubyte'),[28 28 1 Ntr]);
+testDigitData = reshape(loadMNISTImages('t10k-images-idx3-ubyte'),[28 28 1 Ntest]);
+
+%% Create CNN layers
+% Conv net v3
+layers = [imageInputLayer([28 28 1])
+          convolution2dLayer([5 5],8,'Padding',[2 2], 'Stride', [1 1], 'WeightLearnRateFactor',1, 'BiasLearnRateFactor',1 ) % 20 filters with kernel [5x5] [28 -> 13]
+          reluLayer
+          maxPooling2dLayer(2,'Stride',2)
+          convolution2dLayer([5 5],16, 'Padding',[2 2], 'Stride', [1 1], 'WeightLearnRateFactor',1, 'BiasLearnRateFactor',1 ) % 15 filters with kernel [3x3] [7 -> 3]
+          reluLayer
+          maxPooling2dLayer(2,'Stride',2)
+          fullyConnectedLayer(128)
+          reluLayer
+          dropoutLayer(0.5)
+          fullyConnectedLayer(10)
+          softmaxLayer % sofmat fcn activation for previous FC Layer
+          classificationLayer()];  
+
+% % Conv net v4
+% layers = [imageInputLayer([28 28 1])
+%           convolution2dLayer([5 5],32,'Padding',[2 2], 'Stride', [1 1], 'WeightLearnRateFactor',1, 'BiasLearnRateFactor',1 ) % 20 filters with kernel [5x5] [28 -> 13]
+%           reluLayer
+%           maxPooling2dLayer(2,'Stride',2)
+%           convolution2dLayer([5 5],64, 'Padding',[2 2], 'Stride', [1 1], 'WeightLearnRateFactor',1, 'BiasLearnRateFactor',1 ) % 15 filters with kernel [3x3] [7 -> 3]
+%           reluLayer
+%           maxPooling2dLayer(2,'Stride',2)
+%           fullyConnectedLayer(128)
+%           reluLayer
+%           dropoutLayer(0.3)
+%           fullyConnectedLayer(10)
+%           softmaxLayer % sofmat fcn activation for previous FC Layer
+%           classificationLayer()];  
+      
+%% Output sizes
+% convlayer_output = (input_size - filter_size + 2*padding)/stride + 1
+% pooling_output   = (input_size - poolkernel_size)/stride + 1
+
+%% Train CNN
+options = trainingOptions('sgdm','MaxEpochs',5, ...
+                          'InitialLearnRate',5e-4,...%,0.01,...
+                          'LearnRateSchedule', 'none',...
+                          'L2Regularization', 5e-3,...
+                          'MiniBatchSize', 128,...
+                          'Momentum', 0.9,...
+                          'ExecutionEnvironment','cpu');                      
+
+net = trainNetwork(trainDigitData, trainDigitLabels, layers, options);
+
+save conv_netv4.mat net
+%save conv_netv3.mat net
+% load conv_net.mat
+
+%% Test CNN
+trainDigitOutput = classify(net,trainDigitData);
+accuracy_train = sum(trainDigitOutput == trainDigitLabels)/numel(trainDigitLabels);
+
+testDigitOutput = classify(net,testDigitData);
+accuracy_test = sum(testDigitOutput == testDigitLabels)/numel(testDigitLabels);
+
+
+%% Plot CONV layer (Layer 2 and 5) Weights
+
+% W{1} = net.Layers(2).Weights;
+% W{2} = net.Layers(5).Weights;
+% 
+% B{:,1} = net.Layers(2).Bias;
+% B{:,2} = net.Layers(5).Bias;
+% 
+% lay = 2; % 1 or 2
+% for depth = 1:size(W{lay},3)
+%     figure
+%     for i = 1:size(W{lay},3)
+%         subplot(size(W{lay},3)/4,4,i)
+%         W_esc = (W{lay}(:,:,depth,i) - min(W{lay}(:,:,depth,i)))/max(max(W{lay}(:,:,depth,i) - min(W{lay}(:,:,depth,i))));
+%         imshow(W_esc)
+%         title(['Filter ', num2str(depth), 'x',num2str(i)])
+%     end
+%     suptitle('Filters 2nd Conv. Layer')
+% end
+
+%% Image Input Layer 
+% An imageInputLayer is where you specify the image size, 
+% which, in this case, is 28-by-28-by-1. These numbers correspond to the 
+% height, width, and the channel size. The digit data consists of gray scale 
+% images, hence the channel size (color channel) is 1. For a color image, the
+% channel size would be 3, corresponding to the RGB values. You can also 
+% specify any data transformation at this layer, such as data normalization 
+% or data augmentation (randomly flip or crop the data). These are usually 
+% used to avoid overfitting. You do not need to shuffle the data as 
+% trainNetwork automatically does it at the beginning of the training.
+% 
+%% Convolutional Layer
+% In the convolutional layer, the first argument is 
+% filterSize, which is the height and width of the filters the training 
+% function uses while scanning along the images. In this example, the number
+% 5 indicates that the filter size is [5,5]. You can also specify different 
+% sizes for the height and the width of the filter. The second argument is 
+% the number of filters, which is the number of neurons that connect to the 
+% same region of the output. This parameter determines the number of the 
+% feature maps. You can also define the Stride or learning rates for this 
+% layer in the call to convolution2dLayer.
+% 
+%% ReLU Layer
+% The convolutional layer is followed by a nonlinear activation 
+% function. MATLAB uses the rectified linear unit function, specified by 
+% reluLayer.
+% 
+%% Max-Pooling Layer
+% The convolutional layer (with the activation function) is
+% usually followed by a down-sampling operation to reduce the number of 
+% parameters and as another way of avoiding overfitting. One way of
+% down-sampling is max-pooling, which is specified by the maxPooling2dLayer 
+% function. This layer returns the maximum values of rectangular regions of 
+% inputs, specified by the first argument, poolSize. In this example, the 
+% size of the rectangular region is [2,2]. The optional argument Stride 
+% determines the step size the training function takes as it scans along the
+% image. This max-pooling layer takes place between the convolutional layers
+% when there are multiple of them in the network.
+% 
+%% Fully Connected Layer
+% The convolutional (and down-sampling) layers are 
+% followed by one or more fully connected layers. As the name suggests, all
+% neurons in a fully connected layer connect to the neurons in the layer 
+% previous to it. This layer combines all of the features (local information)
+% learned by the previous layers across the image to identify the larger 
+% patterns. The last fully connected layer combines them to classify the 
+% images. That is why, the OutputSize parameter in the last fully connected 
+% layer is equal to the number of classes in the target data. In this example
+% the output size is 10, corresponding to the 10 digits.
+% 
+%% Softmax Layer
+% The fully connected layer usually uses the softmax activation
+% function for classification. You can add the softmax layer by using the 
+% softmaxLayer function after the last fully connected layer.
+% 
+%% Classification Layer
+% The final layer is the classification layer, 
+% defined by using the classificationLayer function. This layer uses the 
+% probabilities returned by the softmax activation function for each input to
+% assign it to one of the mutually exclusive classes.
