@@ -1,0 +1,70 @@
+clear
+clc
+close all
+
+%% Set camera
+camera = webcam(2);
+pause(2)
+
+%% Load the convolutional neural net
+load conv_netv3.mat
+
+%% Initialize blob object
+blob = vision.BlobAnalysis('AreaOutputPort', false, ...
+                           'CentroidOutputPort', false, ... 
+                           'BoundingBoxOutputPort', true, ...
+                           'MinimumBlobArea', 100);  
+                       
+%% Start video
+i = 1;
+while true
+    
+     % Take a picture 
+    frame = camera.snapshot;
+    frame = rgb2gray(frame);
+
+    % Get numbers inside blobs, if no blobs no_num = true
+    [I_test, bbox, no_blobs] = imgblobdetect(blob,frame, 100,[28 28]);
+    
+    if no_blobs
+        I_result = frame; 
+    else
+        tic
+        % Classify numbers
+        [out_labels, bbox] = get_reliablepred(net,I_test,bbox,0.50);
+        
+        % Create final boxed image
+        % Convert labels to cells
+        out_labels_cell = get_boxlabels(out_labels);
+        I_result = insertObjectAnnotation(frame,'rectangle',bbox,out_labels_cell,'TextBoxOpacity',0.9,'FontSize',15); 
+        I_result_nl = insertShape(frame,'rectangle',bbox,'Color', 'yellow'); 
+        toc
+        
+    end
+    
+    % Plot result       
+    if i == 1
+        him = imshow(I_result,'InitialMagnification','fit');
+        axis off
+    else
+        him.CData = I_result;
+        title(strcat('Number of blobs detected: ',num2str(size(bbox,1))),'FontSize',20)
+    end
+    
+    % Pause between frames in seconds
+    pause(0.8)
+    i = i + 1;
+end
+
+%% Functions
+function [testDigitOutput, bboxout] = get_reliablepred(net,I_test,boundingbox,p_thres)    
+    p = predict(net,I_test)';
+    [maxp,ind] = max(p);
+    ind = ind - 1;
+    testDigitOutput = ind(maxp >= p_thres);  
+    bboxout = boundingbox(maxp >= p_thres,:);
+end
+function labels = get_boxlabels(numLabelArray)
+     labels = cellstr(num2str(numLabelArray'));
+end
+
